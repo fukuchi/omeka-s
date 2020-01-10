@@ -78,6 +78,18 @@ $sortHeadings = [
                         'title' => $translate('Delete'),
                     ]); ?></li>
                     <?php endif; ?>
+					<li><?php echo $this->hyperlink('', $this->url('admin/default', [
+						'controller' => 'item',
+						'action' => 'browse'
+					], [
+						'query' => ['resource_template_id' => $resourceTemplate->id()],
+					]), ['class' => 'o-icon-items']); ?></li>
+					<li><?php echo $this->hyperlink('', $this->url('admin/default', [
+						'controller' => 'item-set',
+						'action' => 'browse'
+					], [
+						'query' => ['resource_template_id' => $resourceTemplate->id()],
+					]), ['class' => 'o-icon-item-sets']); ?></li>
                     <li><?php echo $this->hyperlink('', '#', [
                         'data-sidebar-content-url' => $resourceTemplate->url('show-details'),
                         'class' => 'o-icon-more sidebar-content',

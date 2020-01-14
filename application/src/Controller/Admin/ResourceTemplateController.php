@@ -270,49 +270,7 @@ class ResourceTemplateController extends AbstractActionController
     public function exportAction()
     {
         $template = $this->api()->read('resource_templates', $this->params('id'))->getContent();
-        $templateClass = $template->resourceClass();
-        $templateProperties = $template->resourceTemplateProperties();
-
-        $export = [
-            'o:label' => $template->label(),
-            'o:resource_template_property' => [],
-        ];
-
-        if ($templateClass) {
-            $vocab = $templateClass->vocabulary();
-            $export['o:resource_class'] = [
-                'vocabulary_namespace_uri' => $vocab->namespaceUri(),
-                'vocabulary_label' => $vocab->label(),
-                'local_name' => $templateClass->localName(),
-                'label' => $templateClass->label(),
-            ];
-        }
-
-        foreach ($templateProperties as $templateProperty) {
-            $property = $templateProperty->property();
-            $vocab = $property->vocabulary();
-
-            $dataTypeName = $templateProperty->dataType();
-            $dataTypeLabel = null;
-            if ($dataTypeName) {
-                $dataType = $this->dataTypeManager->get($dataTypeName);
-                $dataTypeLabel = $dataType->getLabel();
-            }
-
-            // Note that "position" is implied by array order.
-            $export['o:resource_template_property'][] = [
-                'o:alternate_label' => $templateProperty->alternateLabel(),
-                'o:alternate_comment' => $templateProperty->alternateComment(),
-                'o:is_required' => $templateProperty->isRequired(),
-                'o:is_private' => $templateProperty->isPrivate(),
-                'data_type_name' => $dataTypeName,
-                'data_type_label' => $dataTypeLabel,
-                'vocabulary_namespace_uri' => $vocab->namespaceUri(),
-                'vocabulary_label' => $vocab->label(),
-                'local_name' => $property->localName(),
-                'label' => $property->label(),
-            ];
-        }
+		$export = $this->getPropertiesTree($template);
 
         $filename = preg_replace('/[^a-zA-Z0-9]+/', '_', $template->label());
         $export = json_encode($export, JSON_PRETTY_PRINT);
@@ -368,6 +326,84 @@ class ResourceTemplateController extends AbstractActionController
     {
         return $this->getAddEditView();
     }
+
+    public function duplicateAction()
+    {
+		$templates = $this->api()->search('resource_templates');
+		$templateLabels = [];
+		foreach ($templates->getContent() as $template) {
+			$templateLabels[] = $template->label();
+		}
+
+        $template = $this->api()->read('resource_templates', $this->params('id'))->getContent();
+		$export = $this->getPropertiesTree($template);
+		$tempLabel = 'Copy of ' . $export['o:label'];
+		if (in_array($tempLabel, $templateLabels, TRUE)) {
+			$this->messenger()->addError('Resource template "' . $tempLabel . '" already exists.');
+		} else {
+			$export['o:label'] = $tempLabel;
+			$data = $this->flagValid($export);
+			$response = $this->api()->create('resource_templates', $data);
+			if($response) {
+				return $this->redirect()->toUrl($response->getContent()->url());
+			}
+		}
+    }
+
+	/**
+	 * Get the properties tree to export.
+	 *
+	 * @return array
+	 */
+
+    protected function getPropertiesTree($template)
+	{
+        $templateClass = $template->resourceClass();
+        $templateProperties = $template->resourceTemplateProperties();
+
+        $export = [
+            'o:label' => $template->label(),
+            'o:resource_template_property' => [],
+        ];
+
+        if ($templateClass) {
+            $vocab = $templateClass->vocabulary();
+            $export['o:resource_class'] = [
+                'vocabulary_namespace_uri' => $vocab->namespaceUri(),
+                'vocabulary_label' => $vocab->label(),
+                'local_name' => $templateClass->localName(),
+                'label' => $templateClass->label(),
+            ];
+        }
+
+        foreach ($templateProperties as $templateProperty) {
+            $property = $templateProperty->property();
+            $vocab = $property->vocabulary();
+
+            $dataTypeName = $templateProperty->dataType();
+            $dataTypeLabel = null;
+            if ($dataTypeName) {
+                $dataType = $this->dataTypeManager->get($dataTypeName);
+                $dataTypeLabel = $dataType->getLabel();
+            }
+
+            // Note that "position" is implied by array order.
+            $export['o:resource_template_property'][] = [
+                'o:alternate_label' => $templateProperty->alternateLabel(),
+                'o:alternate_comment' => $templateProperty->alternateComment(),
+                'o:is_required' => $templateProperty->isRequired(),
+                'o:is_private' => $templateProperty->isPrivate(),
+                'data_type_name' => $dataTypeName,
+                'data_type_label' => $dataTypeLabel,
+                'vocabulary_namespace_uri' => $vocab->namespaceUri(),
+                'vocabulary_label' => $vocab->label(),
+                'local_name' => $property->localName(),
+                'label' => $property->label(),
+            ];
+        }
+
+		return $export;
+	}
 
     /**
      * Get the add/edit view.
